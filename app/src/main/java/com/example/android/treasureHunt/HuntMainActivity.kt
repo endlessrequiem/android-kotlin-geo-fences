@@ -98,7 +98,6 @@ class HuntMainActivity : AppCompatActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == REQUEST_TURN_DEVICE_LOCATION_ON) {
-            // We don't rely on the result code, but just check the location setting again
             checkDeviceLocationSettingsAndStartGeofence(false)
         }
     }
@@ -186,31 +185,26 @@ class HuntMainActivity : AppCompatActivity() {
             priority = LocationRequest.PRIORITY_LOW_POWER
         }
         val builder = LocationSettingsRequest.Builder().addLocationRequest(locationRequest)
-
         val settingsClient = LocationServices.getSettingsClient(this)
         val locationSettingsResponseTask =
             settingsClient.checkLocationSettings(builder.build())
-
         locationSettingsResponseTask.addOnFailureListener { exception ->
             if (exception is ResolvableApiException && resolve){
-                // Location settings are not satisfied, but this can be fixed
-                // by showing the user a dialog.
                 try {
-                    // Show the dialog by calling startResolutionForResult(),
-                    // and check the result in onActivityResult().
                     exception.startResolutionForResult(this@HuntMainActivity,
                         REQUEST_TURN_DEVICE_LOCATION_ON)
-                } catch (sendEx: IntentSender.SendIntentException) {
-                    Log.d(TAG, "Error geting location settings resolution: " + sendEx.message)
                 }
-            } else {
-                Snackbar.make(
-                    binding.activityMapsMain,
-                    R.string.location_required_error, Snackbar.LENGTH_INDEFINITE
-                ).setAction(android.R.string.ok) {
-                    checkDeviceLocationSettingsAndStartGeofence()
-                }.show()
-            }
+                catch (sendEx: IntentSender.SendIntentException) {
+                    Log.d(TAG, "Error getting location settings resolution: " + sendEx.message)
+                }
+                } else {
+                    Snackbar.make(
+                        binding.activityMapsMain,
+                        R.string.location_required_error, Snackbar.LENGTH_INDEFINITE
+                    ).setAction(android.R.string.ok) {
+                        checkDeviceLocationSettingsAndStartGeofence()
+                    }.show()
+                }
         }
         locationSettingsResponseTask.addOnCompleteListener {
             if ( it.isSuccessful ) {
@@ -280,38 +274,25 @@ class HuntMainActivity : AppCompatActivity() {
     private fun addGeofenceForClue() {
         if (viewModel.geofenceIsActive()) return
         val currentGeofenceIndex = viewModel.nextGeofenceIndex()
-        if(currentGeofenceIndex >= GeofencingConstants.NUM_LANDMARKS) {
+        if(currentGeofenceIndex >= GeofencingConstants.NUM_LANDMARKS){
             removeGeofences()
             viewModel.geofenceActivated()
             return
         }
         val currentGeofenceData = GeofencingConstants.LANDMARK_DATA[currentGeofenceIndex]
 
-        // Build the Geofence Object
         val geofence = Geofence.Builder()
-            // Set the request ID, string to identify the geofence.
             .setRequestId(currentGeofenceData.id)
-            // Set the circular region of this geofence.
             .setCircularRegion(currentGeofenceData.latLong.latitude,
                 currentGeofenceData.latLong.longitude,
                 GeofencingConstants.GEOFENCE_RADIUS_IN_METERS
             )
-            // Set the expiration duration of the geofence. This geofence gets
-            // automatically removed after this period of time.
             .setExpirationDuration(GeofencingConstants.GEOFENCE_EXPIRATION_IN_MILLISECONDS)
-            // Set the transition types of interest. Alerts are only generated for these
-            // transition. We track entry and exit transitions in this sample.
             .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER)
             .build()
 
-        // Build the geofence request
         val geofencingRequest = GeofencingRequest.Builder()
-            // The INITIAL_TRIGGER_ENTER flag indicates that geofencing service should trigger a
-            // GEOFENCE_TRANSITION_ENTER notification when the geofence is added and if the device
-            // is already inside that geofence.
             .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
-
-            // Add the geofences to be monitored by geofencing service.
             .addGeofence(geofence)
             .build()
 
@@ -326,7 +307,6 @@ class HuntMainActivity : AppCompatActivity() {
                         viewModel.geofenceActivated()
                     }
                     addOnFailureListener {
-                        // Failed to add geofences.
                         Toast.makeText(this@HuntMainActivity, R.string.geofences_not_added,
                             Toast.LENGTH_SHORT).show()
                         if ((it.message != null)) {
