@@ -66,12 +66,9 @@ class HuntMainActivity : AppCompatActivity() {
     private val runningQOrLater =
         android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q
 
-    // A PendingIntent for the Broadcast Receiver that handles geofence transitions.
     private val geofencePendingIntent: PendingIntent by lazy {
         val intent = Intent(this, GeofenceBroadcastReceiver::class.java)
         intent.action = ACTION_GEOFENCE_EVENT
-        // Use FLAG_UPDATE_CURRENT so that you get the same pending intent back when calling
-        // addGeofences() and removeGeofences().
         PendingIntent.getBroadcast(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT)
     }
 
@@ -318,20 +315,14 @@ class HuntMainActivity : AppCompatActivity() {
             .addGeofence(geofence)
             .build()
 
-        // First, remove any existing geofences that use our pending intent
         geofencingClient.removeGeofences(geofencePendingIntent)?.run {
-            // Regardless of success/failure of the removal, add the new geofence
             addOnCompleteListener {
-                // Add the new geofence request with the new geofence
                 geofencingClient.addGeofences(geofencingRequest, geofencePendingIntent)?.run {
                     addOnSuccessListener {
-                        // Geofences added.
                         Toast.makeText(this@HuntMainActivity, R.string.geofences_added,
                             Toast.LENGTH_SHORT)
                             .show()
                         Log.e("Add Geofence", geofence.requestId)
-                        // Tell the viewmodel that we've reached the end of the game and
-                        // activated the last "geofence" --- by removing the Geofence.
                         viewModel.geofenceActivated()
                     }
                     addOnFailureListener {
